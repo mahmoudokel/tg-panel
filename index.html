@@ -1,31 +1,571 @@
 <!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Panel probe</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://telegram.org; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>لوحة شلبي</title>
 <style>
-:root{color-scheme:light dark}
-body{font:16px -apple-system,system-ui,sans-serif;margin:16px;background:var(--tg-theme-bg-color,#fff);color:var(--tg-theme-text-color,#111)}
-code{word-break:break-all;font-size:12px}.ok{color:#1a7f37}.bad{color:#cf222e}
-</style></head><body>
-<h3>فحص اللوحة</h3>
-<div id="out"></div>
+:root {
+  --bg: var(--tg-theme-bg-color, #ffffff);
+  --fg: var(--tg-theme-text-color, #111111);
+  --hint: var(--tg-theme-hint-color, #707579);
+  --btn: var(--tg-theme-button-color, #2481cc);
+  --btn-fg: var(--tg-theme-button-text-color, #ffffff);
+  --sec: var(--tg-theme-secondary-bg-color, #f1f1f4);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: var(--tg-theme-bg-color, #17212b);
+    --fg: var(--tg-theme-text-color, #f5f5f5);
+    --hint: var(--tg-theme-hint-color, #7d8b99);
+    --btn: var(--tg-theme-button-color, #5288c1);
+    --btn-fg: var(--tg-theme-button-text-color, #ffffff);
+    --sec: var(--tg-theme-secondary-bg-color, #232e3c);
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 72px); background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, system-ui, "Segoe UI", Tahoma, sans-serif; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+.exp { color: var(--hint); font-size: 13px; margin: 0 0 16px; }
+.q { margin: 0 0 12px; }
+.opt { display: block; width: 100%; text-align: start; background: var(--sec); color: var(--fg); border: 2px solid transparent; border-radius: 12px; padding: 12px; margin: 0 0 8px; font: inherit; }
+.opt[aria-checked="true"] { border-color: var(--btn); }
+.opt b { display: block; }
+.opt span { display: block; color: var(--hint); font-size: 14px; }
+.opt:disabled, textarea:disabled { opacity: .5; }
+textarea { width: 100%; min-height: 96px; margin-top: 8px; background: var(--sec); color: var(--fg); border: 2px solid transparent; border-radius: 12px; padding: 12px; font: inherit; }
+.msg { margin: 16px 0; padding: 12px; border-radius: 12px; background: var(--sec); }
+.err { color: #d33; }
+.item { background: var(--sec); border-radius: 12px; padding: 12px; margin: 0 0 8px; }
+.item b, .item span { display: block; }
+.item span { color: var(--hint); font-size: 14px; }
+.item .hint { font-size: 13px; }
+.verbs { display: flex; gap: 8px; margin-top: 8px; }
+.verb, .all { background: var(--bg); color: var(--fg); border: 2px solid transparent; border-radius: 10px; padding: 6px 14px; font: inherit; }
+.verb[aria-pressed="true"] { border-color: var(--btn); }
+.all { margin: 0 0 12px; }
+.field { display: block; margin: 0 0 12px; }
+.field > span { display: block; color: var(--hint); font-size: 14px; margin: 0 0 4px; }
+.field input, .field select, .field textarea { width: 100%; margin: 0; background: var(--sec); color: var(--fg); border: 2px solid transparent; border-radius: 12px; padding: 10px 12px; font: inherit; }
+.field input:disabled, .field select:disabled { opacity: .5; }
+.verb:disabled, .all:disabled { opacity: .5; }
+footer { margin-top: 24px; padding: 8px 0; color: var(--hint); font-size: 12px; text-align: center; }
+</style>
+<script>window.__panelHash = location.hash</script>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+<main id="app"></main>
+<footer><bdi id="foot" dir="auto"></bdi></footer>
 <script>
-(async()=>{
-  const tg=window.Telegram&&Telegram.WebApp; if(tg){tg.ready();tg.expand();}
-  const href=location.href, hash=location.hash;
-  const m=hash.match(/[#&]p=([A-Za-z0-9_-]+)/);
-  let decoded="—", ok=false;
-  if(m){try{
-    const b=atob(m[1].replace(/-/g,'+').replace(/_/g,'/'));const u=Uint8Array.from(b,c=>c.charCodeAt(0));
-    const s=new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate-raw')));
-    decoded=await s.text(); ok=true;}catch(e){decoded="خطأ: "+e.message}}
-  const lines=[
-    ["المحتوى وصل", ok?'<b class="ok">نعم ✅</b>':'<b class="bad">لا ❌</b>'],
-    ["طول الرابط", href.length],["طول p", m?m[1].length:0],
-    ["داخل تيليجرام", tg&&tg.initData?'نعم':'لا'],["المنصة", tg?tg.platform+' '+tg.version:'—'],
-    ["النص", decoded.slice(0,300)]];
-  document.getElementById('out').innerHTML=lines.map(([k,v])=>`<p><b>${k}:</b> ${v}</p>`).join('')+`<p><code>${hash.slice(0,200).replace(/</g,'&lt;')}</code></p>`;
-  if(tg&&tg.MainButton&&ok){tg.MainButton.setText('أرسل نتيجة الفحص');tg.MainButton.show();
-    tg.MainButton.onClick(()=>tg.sendData(JSON.stringify({v:1,probe:true,ok,len:href.length})));}
-})();
-</script></body></html>
+/* panel-core:start */
+const SCHEMA_VERSION = 1
+const ANSWER_MAX_BYTES = 4096
+// the fork refuses an "other" text over 1000 code points (lib/miniapp.ts parsePanelAnswer): the same cap here
+const OTHER_MAX_CHARS = 1000
+const KINDS = ['choose', 'pending', 'assign', 'draft']
+// the pending list (plan Task 6): at most 20 items, each offering some of ✅ ❌ ⏳; ids as the fork checks them
+const PENDING_MAX = 20
+const VERBS = ['approve', 'reject', 'later']
+const VERB_MARK = { approve: '✅', reject: '❌', later: '⏳' }
+const ITEM_ID = /^[A-Za-z0-9_:\-]{1,40}$/
+// the assign form (plan Task 7): six text fields, three of them chosen from the core's lists (each at most 30)
+const ASSIGN_FIELDS = ['title', 'owner', 'due', 'company', 'project', 'notes']
+const ASSIGN_LISTS = ['owner', 'company', 'project']
+const ASSIGN_TITLE_MAX = 120
+const NOTES_MAX_CHARS = 1000
+const LIST_MAX = 30
+const LIST_ID_MAX = 200
+// the draft panel (plan Task 8): one outbox item, its body editable; recipients, channel and subject read-only
+const DRAFT_MAX_CHARS = 1200      // the core builds no draft panel over it, and saves no text over it
+const BODY_MAX_CHARS = 4000       // what the fork accepts as an answer's body
+const DRAFT_DO = ['send', 'save', 'cancel']
+const DRAFT_ITEM = /^outbox:[1-9][0-9]{0,11}$/
+const DRAFT_LIST_MAX = 20
+
+function codePoints(s) {
+  return Array.from(String(s)).length
+}
+// A textbox's maxLength counts UTF-16 units, not code points: an emoji is 2 units, so maxLength = N would stop him
+// below N code points. Any text of at most N code points is at most 2N units, so the box allows 2N and the code-point
+// checks (otherTooLong, assignIssue, draftIssue) name the real limit and keep the button disabled past it.
+function inputMaxUnits(maxCodePoints) {
+  return 2 * maxCodePoints
+}
+
+// His marks on a pending list, keyed by item id: a null-prototype map, so an id such as «__proto__» or «constructor»
+// is an ordinary key (never Object.prototype), and every read goes through hasOwnProperty.
+function emptyMarks() {
+  return Object.create(null)
+}
+function copyMarks(marks) {
+  const out = emptyMarks()
+  if (marks) for (const k of Object.keys(marks)) out[k] = marks[k]
+  return out
+}
+function markOf(marks, id) {
+  return marks && Object.prototype.hasOwnProperty.call(marks, id) ? marks[id] : undefined
+}
+// A tap on an item's verb: marks it, or clears it when it was already that verb. A new state, never in place.
+function toggleMark(state, id, d) {
+  const marks = copyMarks(state && state.marks)
+  if (markOf(marks, id) === d) delete marks[id]; else marks[id] = d
+  return Object.assign({}, state || {}, { marks })
+}
+function otherTooLong(text) {
+  return typeof text === 'string' && codePoints(text.trim()) > OTHER_MAX_CHARS
+}
+
+// a strict calendar date «YYYY-MM-DD» (what <input type="date"> gives, and what the core accepts)
+function validDate(s) {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
+  const t = Date.parse(s + 'T00:00:00Z')
+  return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === s
+}
+function foldTitle(s) {
+  return String(s).replace(/\s+/g, ' ').trim()
+}
+
+function readFragment(hash) {
+  const v = new URLSearchParams(String(hash || '').replace(/^#/, '')).get('p')
+  return v !== null && /^[A-Za-z0-9_-]+$/.test(v) ? v : null
+}
+
+function b64urlEncode(bytes) {
+  let s = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000))
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+function b64urlDecode(str) {
+  const b = atob(str.replace(/-/g, '+').replace(/_/g, '/'))
+  const out = new Uint8Array(b.length)
+  for (let i = 0; i < b.length; i++) out[i] = b.charCodeAt(i)
+  return out
+}
+const MAX_FRAGMENT_CHARS = 8192
+const MAX_INFLATED_BYTES = 65536
+async function pipeBytes(bytes, stream, maxOut) {
+  const reader = new Blob([bytes]).stream().pipeThrough(stream).getReader()
+  const chunks = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.length
+    if (maxOut !== undefined && total > maxOut) { try { await reader.cancel() } catch (e) {} throw new Error('too_large') }
+    chunks.push(value)
+  }
+  const out = new Uint8Array(total)
+  let off = 0
+  for (const c of chunks) { out.set(c, off); off += c.length }
+  return out
+}
+async function encodeFragment(panel) {
+  const raw = new TextEncoder().encode(JSON.stringify(panel))
+  return b64urlEncode(await pipeBytes(raw, new CompressionStream('deflate-raw')))
+}
+async function decodeFragment(fragment) {
+  if (typeof fragment !== 'string' || fragment.length > MAX_FRAGMENT_CHARS) throw new Error('fragment_too_long')
+  const raw = await pipeBytes(b64urlDecode(fragment), new DecompressionStream('deflate-raw'), MAX_INFLATED_BYTES)
+  return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(raw))
+}
+
+function validatePanel(panel) {
+  if (!panel || typeof panel !== 'object' || Array.isArray(panel)) return 'not_object'
+  if (panel.v !== SCHEMA_VERSION) return 'version'
+  if (typeof panel.id !== 'string' || !/^P\d+$/.test(panel.id)) return 'id'
+  if (!KINDS.includes(panel.kind)) return 'kind'
+  if (typeof panel.title !== 'string' || !panel.title) return 'title'
+  if (typeof panel.exp !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(panel.exp) || Number.isNaN(Date.parse(panel.exp))) return 'exp'
+  if (panel.kind === 'choose') {
+    if (typeof panel.q !== 'string') return 'q'
+    if (!Array.isArray(panel.opts) || panel.opts.length < 2 || panel.opts.length > 8) return 'opts'
+    const seen = new Set()
+    for (const o of panel.opts) {
+      if (!o || typeof o !== 'object') return 'opt'
+      if (typeof o.id !== 'string' || !/^opt:\d+$/.test(o.id) || seen.has(o.id)) return 'opt_id'
+      seen.add(o.id)
+      if (typeof o.t !== 'string' || !o.t) return 'opt_t'
+      if (o.l !== undefined && typeof o.l !== 'string') return 'opt_l'
+    }
+    if (panel.other !== undefined && typeof panel.other !== 'boolean') return 'other'
+  }
+  if (panel.kind === 'pending') {
+    if (!Array.isArray(panel.items) || panel.items.length < 1 || panel.items.length > PENDING_MAX) return 'items'
+    const seen = new Set()
+    for (const it of panel.items) {
+      if (!it || typeof it !== 'object' || Array.isArray(it)) return 'item'
+      if (typeof it.id !== 'string' || !ITEM_ID.test(it.id) || seen.has(it.id)) return 'item_id'
+      seen.add(it.id)
+      if (typeof it.t !== 'string' || !it.t) return 'item_t'
+      for (const k of ['c', 's', 'a']) if (typeof it[k] !== 'string') return 'item_' + k
+      if (it.h !== undefined && typeof it.h !== 'string') return 'item_h'
+      if (!Array.isArray(it.do) || it.do.length < 1 || it.do.length > VERBS.length) return 'item_do'
+      if (new Set(it.do).size !== it.do.length || it.do.some(d => !VERBS.includes(d))) return 'item_do'
+    }
+    if (panel.more !== undefined && !(Number.isInteger(panel.more) && panel.more >= 0)) return 'more'
+  }
+  if (panel.kind === 'assign') {
+    const f = panel.f
+    if (!f || typeof f !== 'object' || Array.isArray(f)) return 'f'
+    for (const k of ASSIGN_FIELDS) if (typeof f[k] !== 'string') return 'f_' + k
+    if (codePoints(f.title) > ASSIGN_TITLE_MAX) return 'f_title'
+    if (codePoints(f.notes) > NOTES_MAX_CHARS) return 'f_notes'
+    if (f.due && !validDate(f.due)) return 'f_due'
+    const lists = panel.lists
+    if (!lists || typeof lists !== 'object' || Array.isArray(lists)) return 'lists'
+    for (const k of ASSIGN_LISTS) {
+      const list = lists[k]
+      if (!Array.isArray(list) || list.length > LIST_MAX) return 'list_' + k
+      const seen = new Set()
+      for (const e of list) {
+        if (!e || typeof e !== 'object' || Array.isArray(e)) return 'list_' + k
+        if (typeof e.id !== 'string' || !e.id || codePoints(e.id) > LIST_ID_MAX || seen.has(e.id)) return 'list_' + k
+        if (typeof e.t !== 'string' || !e.t) return 'list_' + k
+        seen.add(e.id)
+      }
+      if (f[k] && !seen.has(f[k])) return 'f_' + k
+    }
+  }
+  if (panel.kind === 'draft') {
+    if (typeof panel.item !== 'string' || !DRAFT_ITEM.test(panel.item)) return 'item'
+    for (const k of ['ch', 'to']) if (typeof panel[k] !== 'string' || !panel[k]) return k
+    if (typeof panel.subj !== 'string') return 'subj'
+    if (typeof panel.body !== 'string' || !panel.body.trim() || codePoints(panel.body) > DRAFT_MAX_CHARS) return 'body'
+    if (typeof panel.urgent !== 'boolean') return 'urgent'
+    for (const k of ['cc', 'files', 'warn']) {
+      const list = panel[k]
+      if (!Array.isArray(list) || list.length > DRAFT_LIST_MAX || list.some(x => typeof x !== 'string' || !x)) return k
+    }
+  }
+  return null
+}
+
+// What is wrong with the draft as it stands for this verb, in Arabic, or null when it can be sent. «إلغاء» always can.
+function draftIssue(panel, state) {
+  const d = state && state.do
+  if (!DRAFT_DO.includes(d)) return 'اختر أرسل أو احفظ أو إلغاء'
+  if (d === 'cancel') return null
+  const body = state && typeof state.body === 'string' ? state.body : ''
+  if (!body.trim()) return 'نص الرسالة فارغ'
+  if (codePoints(body) > BODY_MAX_CHARS) return 'النص أطول من ' + BODY_MAX_CHARS + ' حرف؛ اختصره'
+  if (d === 'save' && codePoints(body) > DRAFT_MAX_CHARS) return 'النص المحفوظ أطول من ' + DRAFT_MAX_CHARS + ' حرف؛ اختصره أو أرسله'
+  return null
+}
+
+// What is wrong with the assign form as it stands, in Arabic, or null when it can be sent. sendData closes the app,
+// so the page checks everything the core checks before it ever sends.
+function assignIssue(panel, state) {
+  const f = (state && state.fields) || {}
+  const val = k => (typeof f[k] === 'string' ? f[k] : '')
+  const title = foldTitle(val('title'))
+  if (!title) return 'اكتب عنوان المهمة'
+  if (codePoints(title) > ASSIGN_TITLE_MAX) return 'العنوان أطول من ' + ASSIGN_TITLE_MAX + ' حرفًا؛ اختصره'
+  for (const k of ASSIGN_LISTS) {
+    const v = val(k)
+    if (v && !panel.lists[k].some(e => e.id === v)) return 'اختر من القائمة'
+  }
+  if (val('due') && !validDate(val('due'))) return 'الموعد ليس تاريخًا صالحًا'
+  if (codePoints(val('notes').trim()) > NOTES_MAX_CHARS) return 'الملاحظات أطول من ' + NOTES_MAX_CHARS + ' حرف؛ اختصرها'
+  return null
+}
+
+// «الكل ✅»: every item that offers ✅ is marked ✅; an item without it keeps its mark. A new state, never in place.
+function approveAll(panel, state) {
+  const marks = copyMarks(state && state.marks)
+  if (panel && panel.kind === 'pending' && Array.isArray(panel.items)) {
+    for (const it of panel.items) if (it.do.includes('approve')) marks[it.id] = 'approve'
+  }
+  return Object.assign({}, state || {}, { marks })
+}
+
+function pendingTouched(panel, state) {
+  const marks = state && state.marks
+  const out = []
+  for (const it of panel.items) {
+    const d = markOf(marks, it.id)
+    if (typeof d === 'string' && it.do.includes(d)) out.push({ id: it.id, do: d })
+  }
+  return out
+}
+
+function isExpired(panel, nowMs) {
+  const t = Date.parse(panel.exp)
+  return Number.isNaN(t) || nowMs >= t
+}
+
+function buildAnswer(panel, state) {
+  if (!panel || !state) return null
+  if (panel.kind === 'choose') {
+    const pick = state.pick
+    if (pick === 'other') {
+      if (panel.other !== true) return null
+      const text = typeof state.text === 'string' ? state.text.trim() : ''
+      if (!text || codePoints(text) > OTHER_MAX_CHARS) return null
+      return { v: SCHEMA_VERSION, panel: panel.id, kind: 'choose', pick: 'other', text }
+    }
+    if (typeof pick === 'string' && panel.opts.some(o => o.id === pick)) {
+      return { v: SCHEMA_VERSION, panel: panel.id, kind: 'choose', pick }
+    }
+  }
+  if (panel.kind === 'assign') {
+    if (assignIssue(panel, state) !== null) return null
+    const f = state.fields
+    const val = k => (typeof f[k] === 'string' ? f[k] : '')
+    return { v: SCHEMA_VERSION, panel: panel.id, kind: 'assign', fields: {
+      title: foldTitle(val('title')), owner: val('owner'), due: val('due'), company: val('company'),
+      project: val('project'), notes: val('notes').trim() } }
+  }
+  if (panel.kind === 'draft') {
+    // his body exactly as it stands in the textarea (the core sends exactly that body), with the verb he pressed
+    if (draftIssue(panel, state) !== null) return null
+    return { v: SCHEMA_VERSION, panel: panel.id, kind: 'draft', do: state.do, body: typeof state.body === 'string' ? state.body : '' }
+  }
+  if (panel.kind === 'pending') {
+    // only the items he touched, in the panel's order, each with a verb its item offers
+    const decisions = pendingTouched(panel, state)
+    return decisions.length ? { v: SCHEMA_VERSION, panel: panel.id, kind: 'pending', decisions } : null
+  }
+  return null
+}
+
+function answerBytes(answer) {
+  return new TextEncoder().encode(JSON.stringify(answer)).length
+}
+
+// The one gate before sendData (which closes the app, so a refused answer cannot be corrected in place): a valid
+// answer, a live panel, and at most ANSWER_MAX_BYTES UTF-8 bytes — Arabic is 2 bytes a letter, emoji 4.
+// -> { data } to send, or { why: 'invalid' | 'expired' | 'too_big' }.
+function prepareSend(panel, state, nowMs) {
+  const answer = buildAnswer(panel, state)
+  if (!answer) return { why: 'invalid' }
+  if (isExpired(panel, nowMs)) return { why: 'expired' }
+  if (answerBytes(answer) > ANSWER_MAX_BYTES) return { why: 'too_big' }
+  return { data: JSON.stringify(answer) }
+}
+/* panel-core:end */
+
+(function () {
+  if (typeof document === 'undefined') return
+  const app = document.getElementById('app')
+  const foot = document.getElementById('foot')
+  const tg = window.Telegram && window.Telegram.WebApp
+  const hash = window.__panelHash || ''
+  const frag = readFragment(hash)
+  const BAD = 'هذه اللوحة غير صالحة؛ اطلبها من شلبي من جديد'
+  const OTHER_TOO_LONG = 'النص أطول من ' + OTHER_MAX_CHARS + ' حرف؛ اختصره'
+  let panel = null
+  let state = { pick: null, text: '', marks: emptyMarks() }
+  let expired = false
+
+  function el(tag, props, text) {
+    const e = document.createElement(tag)
+    if (props) for (const k in props) e[k] = props[k]
+    if (text !== undefined) e.textContent = text
+    return e
+  }
+  function hideMain() { if (tg && tg.MainButton) tg.MainButton.hide() }
+  function bad() {
+    app.replaceChildren(el('div', { className: 'msg err' }, BAD))
+    hideMain()
+  }
+  function riyadh(iso) {
+    const p = {}
+    for (const x of new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', calendar: 'gregory', numberingSystem: 'latn', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(iso))) p[x.type] = x.value
+    return p.day + '/' + p.month + ' ' + p.hour + ':' + p.minute
+  }
+  function refresh() {
+    if (panel.kind === 'draft') showDraftIssue()
+    if (!tg || !tg.MainButton) return
+    if (expired) { tg.MainButton.hide(); return }
+    if (panel.kind === 'draft') {
+      tg.MainButton.setText('أرسل')
+      tg.MainButton.show()
+      if (buildAnswer(panel, Object.assign({}, state, { do: 'send' }))) tg.MainButton.enable(); else tg.MainButton.disable()
+      return
+    }
+    if (panel.kind === 'pending') tg.MainButton.setText('أرسل القرارات (' + pendingTouched(panel, state).length + ')')
+    else if (panel.kind === 'assign') tg.MainButton.setText('كلّف')
+    else tg.MainButton.setText('اختر')
+    tg.MainButton.show()
+    if (buildAnswer(panel, state)) tg.MainButton.enable(); else tg.MainButton.disable()
+  }
+  function send(draftDo) {
+    // the draft's three verbs: the MainButton is «أرسل», the two plain buttons «احفظ التعديل» and «إلغاء»
+    if (panel.kind === 'draft') state = Object.assign({}, state, { do: typeof draftDo === 'string' ? draftDo : 'send' })
+    const ready = prepareSend(panel, state, Date.now())
+    if (ready.why === 'invalid') {
+      const m = panel.kind === 'draft' && document.getElementById('issue')
+      if (m) { m.textContent = draftIssue(panel, state) || ''; m.hidden = !m.textContent }
+      return
+    }
+    if (ready.why === 'expired') { expired = true; render(); refresh(); return }
+    if (ready.why === 'too_big') {
+      let m = document.getElementById('toolong')
+      if (!m) { m = el('div', { id: 'toolong', className: 'msg err' }); app.appendChild(m) }
+      m.textContent = 'الرد أطول من المسموح؛ اختصر نصك'
+      return
+    }
+    tg.sendData(ready.data)
+  }
+  function showDraftIssue() {
+    const m = document.getElementById('issue')
+    if (!m) return
+    const why = draftIssue(panel, Object.assign({}, state, { do: 'send' }))
+    m.textContent = why || ''
+    m.hidden = !why
+  }
+  function renderDraft(nodes) {
+    // to, cc and subject are read-only text; only the body is editable
+    nodes.push(el('p', { className: 'q', dir: 'auto' }, panel.ch + ' ← ' + panel.to))
+    if (panel.urgent) nodes.push(el('p', { className: 'exp', dir: 'auto' }, '⚡ عاجل — يتجاوز ساعات الهدوء والجمعة'))
+    if (panel.cc.length) nodes.push(el('p', { className: 'q', dir: 'auto' }, 'نسخة: ' + panel.cc.join('، ')))
+    if (panel.subj) nodes.push(el('p', { className: 'q', dir: 'auto' }, 'الموضوع: ' + panel.subj))
+    // maxLength in UTF-16 units (inputMaxUnits); draftIssue holds the body to BODY_MAX_CHARS code points
+    const body = el('textarea', { dir: 'auto', maxLength: inputMaxUnits(BODY_MAX_CHARS), disabled: expired, value: state.body })
+    body.addEventListener('input', () => {
+      state = Object.assign({}, state, { body: body.value })
+      const tl = document.getElementById('toolong'); if (tl) tl.remove()
+      refresh()
+    })
+    nodes.push(body)
+    for (const f of panel.files) nodes.push(el('p', { className: 'exp', dir: 'auto' }, '📎 ' + f))
+    for (const w of panel.warn) nodes.push(el('p', { className: 'q', dir: 'auto' }, '⚠️ ' + w))
+    nodes.push(el('p', { className: 'exp' }, '«أرسل» يرسل النص كما يظهر هنا؛ «احفظ التعديل» لا يرسل.'))
+    const row = el('div', { className: 'verbs' })
+    const save = el('button', { type: 'button', className: 'verb', disabled: expired }, 'احفظ التعديل')
+    save.addEventListener('click', () => send('save'))
+    const cancel = el('button', { type: 'button', className: 'verb', disabled: expired }, 'إلغاء')
+    cancel.addEventListener('click', () => send('cancel'))
+    row.appendChild(save)
+    row.appendChild(cancel)
+    nodes.push(row)
+    nodes.push(el('div', { id: 'issue', className: 'msg err', hidden: true }))
+    app.replaceChildren(...nodes)
+  }
+  function renderPending(nodes) {
+    const all = el('button', { type: 'button', className: 'all', disabled: expired }, 'الكل ✅')
+    all.addEventListener('click', () => { state = approveAll(panel, state); render(); refresh() })
+    nodes.push(all)
+    for (const it of panel.items) {
+      const box = el('div', { className: 'item' })
+      box.appendChild(el('b', { dir: 'auto' }, it.t))
+      if (it.c) box.appendChild(el('span', { dir: 'auto' }, it.c))
+      box.appendChild(el('span', { className: 'src', dir: 'auto' }, it.s + ' · ' + it.a))
+      if (it.h) box.appendChild(el('span', { className: 'hint', dir: 'auto' }, it.h))
+      const row = el('div', { className: 'verbs' })
+      for (const d of it.do) {
+        const b = el('button', { type: 'button', className: 'verb', disabled: expired }, VERB_MARK[d])
+        b.setAttribute('aria-pressed', String(markOf(state.marks, it.id) === d))
+        b.addEventListener('click', () => {
+          state = toggleMark(state, it.id, d)
+          render(); refresh()
+        })
+        row.appendChild(b)
+      }
+      box.appendChild(row)
+      nodes.push(box)
+    }
+    if (panel.more > 0) nodes.push(el('p', { className: 'exp' }, 'و' + panel.more + ' غيرها على بطاقاتها.'))
+    app.replaceChildren(...nodes)
+  }
+  function showIssue() {
+    const m = document.getElementById('issue')
+    if (!m) return
+    const why = assignIssue(panel, state)
+    m.textContent = why || ''
+    m.hidden = !why
+  }
+  function renderAssign(nodes) {
+    function set(k, v) { state = Object.assign({}, state, { fields: Object.assign({}, state.fields, { [k]: v }) }); showIssue(); refresh() }
+    function field(label, input) {
+      const w = el('label', { className: 'field' })
+      w.appendChild(el('span', null, label))
+      w.appendChild(input)
+      nodes.push(w)
+    }
+    // maxLength in UTF-16 units (inputMaxUnits); assignIssue holds the title to ASSIGN_TITLE_MAX code points
+    const title = el('input', { type: 'text', dir: 'auto', maxLength: inputMaxUnits(ASSIGN_TITLE_MAX), disabled: expired, value: state.fields.title })
+    title.addEventListener('input', () => set('title', title.value))
+    field('العنوان', title)
+    function select(k, label, empty) {
+      const s = el('select', { dir: 'auto', disabled: expired })
+      s.appendChild(el('option', { value: '' }, empty))
+      for (const e of panel.lists[k]) s.appendChild(el('option', { value: e.id }, e.t))
+      s.value = state.fields[k]
+      s.addEventListener('change', () => set(k, s.value))
+      field(label, s)
+    }
+    select('owner', 'المسؤول', 'أنت')
+    const due = el('input', { type: 'date', disabled: expired, value: state.fields.due })
+    for (const ev of ['input', 'change']) due.addEventListener(ev, () => set('due', due.value))
+    field('الموعد', due)
+    select('company', 'الشركة', 'غير محددة')
+    select('project', 'المشروع', '—')
+    // maxLength in UTF-16 units (inputMaxUnits); assignIssue holds the notes to NOTES_MAX_CHARS code points
+    const notes = el('textarea', { dir: 'auto', maxLength: inputMaxUnits(NOTES_MAX_CHARS), disabled: expired, value: state.fields.notes })
+    notes.addEventListener('input', () => set('notes', notes.value))
+    field('ملاحظات', notes)
+    nodes.push(el('div', { id: 'issue', className: 'msg err', hidden: true }))
+    app.replaceChildren(...nodes)
+    showIssue()
+  }
+  function render() {
+    const nodes = [el('h1', { dir: 'auto' }, panel.title), el('p', { className: 'exp' }, 'صالحة حتى ' + riyadh(panel.exp))]
+    if (expired) nodes.push(el('div', { className: 'msg' }, 'انتهت صلاحية هذه اللوحة'))
+    if (panel.kind === 'pending') { renderPending(nodes); return }
+    if (panel.kind === 'assign') { renderAssign(nodes); return }
+    if (panel.kind === 'draft') { renderDraft(nodes); return }
+    nodes.push(el('p', { className: 'q', dir: 'auto' }, panel.q))
+    const buttons = []
+    function mark() { for (const b of buttons) b.setAttribute('aria-checked', String(b.dataset.id === state.pick)) }
+    function row(id, t, l) {
+      const b = el('button', { type: 'button', className: 'opt', disabled: expired })
+      b.dataset.id = id
+      b.setAttribute('role', 'radio')
+      b.appendChild(el('b', { dir: 'auto' }, t))
+      if (l) b.appendChild(el('span', { dir: 'auto' }, l))
+      b.addEventListener('click', () => { state.pick = id; mark(); refresh() })
+      buttons.push(b)
+      nodes.push(b)
+      return b
+    }
+    for (const o of panel.opts) row(o.id, o.t, o.l)
+    if (panel.other === true) {
+      row('other', 'غير ذلك')
+      // maxLength in UTF-16 units (inputMaxUnits); the code-point check below names the limit past OTHER_MAX_CHARS
+      const ta = el('textarea', { disabled: expired, dir: 'auto', maxLength: inputMaxUnits(OTHER_MAX_CHARS) })
+      ta.addEventListener('input', () => {
+        state.text = ta.value
+        const tl = document.getElementById('toolong'); if (tl) tl.remove()
+        if (otherTooLong(state.text)) {
+          app.appendChild(el('div', { id: 'toolong', className: 'msg err' }, OTHER_TOO_LONG))
+        }
+        if (state.pick !== 'other') { state.pick = 'other'; mark() }
+        refresh()
+      })
+      nodes.push(ta)
+    }
+    mark()
+    app.replaceChildren(...nodes)
+  }
+
+  foot.textContent = 'v1 · ' + (panel ? panel.id : '—') + ' · ' + (frag ? frag.length : 0) + ' بايت'
+  if (tg) { try { tg.ready(); tg.expand() } catch (e) {} }
+  if (!frag) { bad(); return }
+  decodeFragment(frag).then(p => {
+    if (validatePanel(p) !== null) { bad(); return }
+    panel = p
+    if (panel.kind === 'assign') state.fields = Object.assign({}, panel.f)
+    if (panel.kind === 'draft') state.body = panel.body
+    expired = isExpired(panel, Date.now())
+    foot.textContent = 'v1 · ' + panel.id + ' · ' + frag.length + ' بايت'
+    render()
+    if (tg && tg.MainButton) tg.MainButton.onClick(() => send())
+    refresh()
+  }).catch(bad)
+})()
+</script>
+</body>
+</html>
