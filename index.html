@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel probe</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{color-scheme:light dark}
+body{font:16px -apple-system,system-ui,sans-serif;margin:16px;background:var(--tg-theme-bg-color,#fff);color:var(--tg-theme-text-color,#111)}
+code{word-break:break-all;font-size:12px}.ok{color:#1a7f37}.bad{color:#cf222e}
+</style></head><body>
+<h3>فحص اللوحة</h3>
+<div id="out"></div>
+<script>
+(async()=>{
+  const tg=window.Telegram&&Telegram.WebApp; if(tg){tg.ready();tg.expand();}
+  const href=location.href, hash=location.hash;
+  const m=hash.match(/[#&]p=([A-Za-z0-9_-]+)/);
+  let decoded="—", ok=false;
+  if(m){try{
+    const b=atob(m[1].replace(/-/g,'+').replace(/_/g,'/'));const u=Uint8Array.from(b,c=>c.charCodeAt(0));
+    const s=new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate-raw')));
+    decoded=await s.text(); ok=true;}catch(e){decoded="خطأ: "+e.message}}
+  const lines=[
+    ["المحتوى وصل", ok?'<b class="ok">نعم ✅</b>':'<b class="bad">لا ❌</b>'],
+    ["طول الرابط", href.length],["طول p", m?m[1].length:0],
+    ["داخل تيليجرام", tg&&tg.initData?'نعم':'لا'],["المنصة", tg?tg.platform+' '+tg.version:'—'],
+    ["النص", decoded.slice(0,300)]];
+  document.getElementById('out').innerHTML=lines.map(([k,v])=>`<p><b>${k}:</b> ${v}</p>`).join('')+`<p><code>${hash.slice(0,200).replace(/</g,'&lt;')}</code></p>`;
+  if(tg&&tg.MainButton&&ok){tg.MainButton.setText('أرسل نتيجة الفحص');tg.MainButton.show();
+    tg.MainButton.onClick(()=>tg.sendData(JSON.stringify({v:1,probe:true,ok,len:href.length})));}
+})();
+</script></body></html>
